@@ -1,12 +1,18 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+
+let Notifications = null;
+try {
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.warn('expo-notifications not available in this environment:', e.message);
+}
 
 let handlerConfigured = false;
 
 export const initNotifications = async () => {
   if (handlerConfigured) return true;
   try {
-    if (Notifications && Notifications.setNotificationHandler) {
+    if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowAlert: true,
@@ -17,10 +23,14 @@ export const initNotifications = async () => {
       handlerConfigured = true;
     }
 
-    if (Platform.OS === 'android' && Notifications.setNotificationChannelAsync) {
+    if (
+      Platform.OS === 'android' &&
+      Notifications &&
+      typeof Notifications.setNotificationChannelAsync === 'function'
+    ) {
       await Notifications.setNotificationChannelAsync('foodie_reminders', {
         name: 'Foodie Reminders',
-        importance: Notifications.AndroidImportance.MAX,
+        importance: Notifications.AndroidImportance?.MAX || 5,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#e63946',
       });
@@ -34,7 +44,7 @@ export const initNotifications = async () => {
 
 export const requestNotificationPermissions = async () => {
   try {
-    if (!Notifications.getPermissionsAsync || !Notifications.requestPermissionsAsync) {
+    if (!Notifications || typeof Notifications.requestPermissionsAsync !== 'function') {
       return { granted: false, fallback: true };
     }
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -53,7 +63,7 @@ export const requestNotificationPermissions = async () => {
 export const scheduleTestNotification = async (delaySeconds = 2) => {
   await initNotifications();
   try {
-    if (!Notifications.scheduleNotificationAsync) {
+    if (!Notifications || typeof Notifications.scheduleNotificationAsync !== 'function') {
       return { success: false, fallback: true, message: 'Time to cook something delicious!' };
     }
 
@@ -86,7 +96,7 @@ export const scheduleTestNotification = async (delaySeconds = 2) => {
 export const scheduleDailyReminder = async (delayMinutes = 1) => {
   await initNotifications();
   try {
-    if (!Notifications.scheduleNotificationAsync) {
+    if (!Notifications || typeof Notifications.scheduleNotificationAsync !== 'function') {
       return { success: false, fallback: true };
     }
 
@@ -112,7 +122,7 @@ export const scheduleDailyReminder = async (delayMinutes = 1) => {
 
 export const cancelAllNotifications = async () => {
   try {
-    if (Notifications.cancelAllScheduledNotificationsAsync) {
+    if (Notifications && typeof Notifications.cancelAllScheduledNotificationsAsync === 'function') {
       await Notifications.cancelAllScheduledNotificationsAsync();
       return true;
     }
